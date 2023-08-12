@@ -1,4 +1,4 @@
-# Setup MongoDB server with Replication On Kuberentes.with replicas 
+# Setup MongoDB server with Replication On Kuberentes with replicas 
 ## Prerequisites
     1.  Kubernetes Cluster (In My Case I am using minikube)
     2.  StorageClass to Provision PVC. ( In my Case StorageClassName is standard)
