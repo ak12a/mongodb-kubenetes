@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup-cronjob
+  namespace: mongo
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Allow
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb
+              image: mongo
+              command: ["/bin/sh", "-c"]
+              args:
+                [
+                  'mongodump --uri "mongodb://admin:${MONGO_PASSWORD}@mongo-0.mongo:27017,mongo-1.mongo:27017,mongo-2.mongo:27017/?replicaSet=rs0&readPreference=secondaryPreferred&authSource=admin&ssl=false" -o /mongodump/$(date +"%d-%m-%Y-%H%-M-%S")',
+                ]
+              volumeMounts:
+                - mountPath: "/mongodump/"
+                  name: mongodump
+              env:
+                - name: MONGO_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: MONGO_PASSWORD
+                      name: mongo-secret
+          volumes:
+            - name: mongodump
+              persistentVolumeClaim:
+                claimName: mongodb-backup-pvc
+          restartPolicy: Never
+---
+# Create PVC 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-backup-pvc
+  namespace: mongo
+spec:
+  storageClassName: "standard" # Change the StorageClassName according to your
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

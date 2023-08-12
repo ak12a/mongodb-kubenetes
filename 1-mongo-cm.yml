@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-config
+  namespace: mongo
+data:
+  mongo.conf: |
+    storage:
+      dbPath: /data/db
+      journal:
+          enabled: true
+    net:
+      port: 27017
+      bindIpAll: true
+    replication:
+      replSetName: rs0
+    security:
+      authorization: enabled
+      clusterAuthMode: keyFile
+      keyFile: /home/mongodb/keyFile
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: mongo
+data:
+  init.sh: |
+    cat /home/mongodb/secret/keyFile > /home/mongodb/keyFile
+    chmod 400 /home/mongodb/keyFile
+    chown -R mongodb:mongodb /home/mongodb/keyFile
+
+--- 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-key
+  namespace: mongo
+data:
+  keyFile: |
+          E+NA+RCNBWD0IrjMr8f/MwDC/X+KPsJ87Me1u6yl+PRSfxInUR7sxOWEbuR8rQih
+          3vQ1zgf6whPabo+2L/njAEBVdB1wTHMk8w5AFBJZmNvFxCdw+lXr2LJkfJT6fhME
+          gq8V5vTP4Y3qcqmY1Na1awet679mMRjOS3I8dCuAjvmIYlyzYPRdr8jzhZsiNb2g
+          z4OGTyIFSi238qw7BV4xkAkGbUN1jNMabBjtL5NEmjKXanTwM17AM62L0qERZuIT
+          z+tcavEE/xAQWTnsmwHvXZDTn2dDXiUNuca9qWCpaPkTlgGhwgyb52wIEbUOiPEB
+          sdywIrlko9G/T2UyWQ5l10cjSvptFIJ+G6oAF0tPFi7kcB9QxzcyArXIPHavJ8Em
+          jBREvs7X/0rUSdwVtsKq1TYLvPO6ILZ9ZQevIelORwk1DyOQhJYKX/UqirhII9Gt
+          tKiOlJRew/EWU+NzJoJCby/mSPnv0lK0nnfqex/NMy+tRKXYq6tF9fqaimU9cKaw
+          moJAI/yOa7M4g/srZGlJU5fWisYwDG9XYPAgc61DdXNnANBded2fpMmsuqAewbvy
+          FkOUdpSSrej9V1eY/rPtVF0Rd+O2q2wZ+MNiEx8wsSIAThU8rJYJCMMDPcZwoSC9
+          Fkv7Kc+VmfeTUNttbdAk+nIWmkRmSOcBwiHL+dIt+OIIEcHeP4CZtXqyw5QSrELo
+          AophH0Tsl4vlH/N+9LKerH5FR8gAihhyedTB9Soa6wpvBew43h4rAGo1VRgALL2S
+          lKYiQthxccSpcx10+yZW3UGhtYsiBgvW3O9OtCa9vXlBfAD0ldfrc3E3MDJNsj+0
+          8iRYSwiwyIGguljNn8rcE76WTpOFDvA9HoOdmq094Yn4jvmd9FloR4BbKbgtchfO
+          HjP3Hu/0tXoOTkpcRyolb7TIDp6vOyC9fANKu2jgM+xyftMn5fs7FpyIlwiJUJd8
+          YFzKgfLJLLk40JXJg4BjgGGPMY8Q
+--- 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-setup
+  namespace: mongo
+data: 
+  1-create-db-owner.sh: |
+    if [ "$POD_NAME" == "mongo-0" ]; then 
+        mongosh ${MONGO_INITDB_DATABASE} \
+            --username ${MONGO_INITDB_ROOT_USERNAME} \
+            --password ${MONGO_INITDB_ROOT_PASSWORD} \
+            --authenticationDatabase admin \
+            --eval "db.createUser({ \
+                user: '${MONGO_USERNAME}', \
+                pwd: '${MONGO_PASSWORD}', \
+                roles: [{ \
+                    role: 'root', \
+                    db: '${MONGO_INITDB_DATABASE}' \
+                }] \
+            });"
+    fi
+  2-initiate-replica-set.sh: |
+    if [ "$POD_NAME" == "mongo-0" ]; then 
+        members="{_id: 0, host: 'mongo-0.mongo:27017'}"
+        for id in `seq 1 $(( $(echo $K8S_REPLICAS) - 1 ))`; do
+            members="${members}, {_id: $id, host: 'mongo-$id.mongo:27017'}"
+        done
+        s=0
+        while [ $s -eq 0 ]; do
+            sleep 10
+            echo -e "\n\n[Mongo-Setup] Trying to initiate replica set...\n\n"
+            {
+                mongosh admin \
+                    --username ${MONGO_INITDB_ROOT_USERNAME} \
+                    --password ${MONGO_INITDB_ROOT_PASSWORD} \
+                    --eval "rs.initiate({_id: 'rs0', members: [$members]});"
+
+                if [ $? == 0 ]; then
+                    s=1
+                    echo -e "\n\n[Mongo-Setup] Replica set has been initiated successfully!\n\n"
+                fi
+            } || echo . #Keep while loop from existing if command fails 
+        done
+    fi &   
+
+
+
+
+
+
