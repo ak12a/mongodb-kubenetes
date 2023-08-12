@@ -45,7 +45,7 @@ kUs1ZlyFSWSqYdaeeQHvlCXgRgKwfa+UJMi1jTTc4NEho6bk
 
 ## Add the above generated key in configmap
 Example:
-![Alt text](image.png)
+![Alt text](.assets/image.png)
 
 ## *Create a Namespace mongo* 
 ```bash
@@ -74,8 +74,8 @@ kubectl get pods -n mongo
 kubectl exec -it -n mongo mongo-0 -- mongosh -u <USER> -p <PASS> --authenticationDatabase --eval 'rs.status()'
 ```
 example-Output: 
-![Alt text](image-1.png)
-![Alt text](image-2.png)
+![Alt text](.assets/image-1.png)
+![Alt text](.assets/image-2.png)
 
 
 
@@ -94,7 +94,7 @@ use demo-db
 db.user.insert({name: "Arvind Kumar", age: 32, gender: "m"})
 ```
 Example-output
-![Alt text](image-4.png)
+![Alt text](.assets/image-4.png)
 
 
 
@@ -108,7 +108,7 @@ kubectl exec -it -n mongo mongo-2 -- mongosh -u <USER> -p <PASS> --authenticatio
 show dbs
 ```
 example-output: 
-![Alt text](image-5.png)
+![Alt text](.assets/image-5.png)
 
 
 
